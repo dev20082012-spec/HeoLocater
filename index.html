@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LifeLane Route | Smart Ambulance Green Corridor & Escalation Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --bg-card-hover: rgba(30, 41, 59, 0.85);
+      --border-color: rgba(59, 130, 246, 0.2);
+      --border-accent: rgba(59, 130, 246, 0.4);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --neon-red: #ef4444;
+      --neon-red-glow: rgba(239, 68, 68, 0.4);
+      --neon-amber: #f59e0b;
+      --neon-amber-glow: rgba(245, 158, 11, 0.4);
+      --neon-green: #10b981;
+      --neon-green-glow: rgba(16, 185, 129, 0.4);
+      --neon-blue: #3b82f6;
+      --neon-blue-glow: rgba(59, 130, 246, 0.4);
+      --neon-cyan: #06b6d4;
+      --neon-purple: #a855f7;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(11, 15, 25, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #ef4444, #3b82f6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      color: white;
+      box-shadow: 0 0 15px var(--neon-red-glow);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-title span {
+      background: linear-gradient(90deg, #60a5fa, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .status-badge .beacon {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--neon-red);
+      box-shadow: 0 0 8px var(--neon-red);
+      animation: pulse-beacon 1.2s infinite;
+    }
+    @keyframes pulse-beacon {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(1.3); }
+    }
+    .metrics-ribbon {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 6px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .metric-pill {
+      display: flex;
+      flex-direction: column;
+    }
+    .metric-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .metric-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .metric-val.green { color: var(--neon-green); text-shadow: 0 0 8px var(--neon-green-glow); }
+    .metric-val.blue { color: #60a5fa; }
+    .metric-val.amber { color: var(--neon-amber); }
+    .metric-val.red { color: var(--neon-red); }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn {
+      appearance: none;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 0 14px rgba(59, 130, 246, 0.5);
+    }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+      color: #fca5a5;
+      box-shadow: 0 0 12px var(--neon-red-glow);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #e2e8f0;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+    }
+    .btn-accent {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+    .btn-accent:hover {
+      background: rgba(16, 185, 129, 0.25);
+      color: #6ee7b7;
+      box-shadow: 0 0 12px var(--neon-green-glow);
+    }
+    .btn-icon {
+      padding: 7px 10px;
+    }
+    .main-workspace {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 65px);
+      position: relative;
+      overflow: hidden;
+    }
+    .viewport-panel {
+      flex: 0 0 65%;
+      position: relative;
+      height: 100%;
+      background: #060911;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #080c16;
+    }
+    .leaflet-container {
+      background: #080c16 !important;
+      font-family: 'Inter', sans-serif !important;
+    }
+    .map-overlay-hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .hud-card {
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      pointer-events: auto;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+    .hud-title {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--neon-blue);
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hud-coords {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+    }
+    .map-legend {
+      position: absolute;
+      bottom: 20px;
+      left: 16px;
+      z-index: 900;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.72rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #cbd5e1;
+    }
+    .legend-line {
+      width: 18px;
+      height: 4px;
+      border-radius: 2px;
+    }
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .command-panel {
+      flex: 0 0 35%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.95);
+      border-left: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      z-index: 910;
+    }
+    .command-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .command-panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+    .panel-section {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-tag {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tag-layer1 {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+    }
+    .tag-layer2 {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+    }
+    .tag-audit {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
+    .section-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .layer1-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .telemetry-box {
+      background: rgba(11, 15, 25, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .telemetry-title {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .telemetry-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .traffic-signal-card {
+      background: rgba(11, 15, 25, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .signal-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+    }
+    .signal-junction-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .signal-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      width: fit-content;
+    }
+    .traffic-light-graphic {
+      background: #020617;
+      border: 2px solid #1e293b;
+      border-radius: 20px;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+    }
+    .lamp {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1e293b;
+      transition: all 0.2s ease;
+      opacity: 0.25;
+    }
+    .lamp.red.active {
+      background: #ef4444;
+      opacity: 1;
+      box-shadow: 0 0 12px #ef4444;
+    }
+    .lamp.amber.active {
+      background: #f59e0b;
+      opacity: 1;
+      box-shadow: 0 0 12px #f59e0b;
+    }
+    .lamp.green.active {
+      background: #10b981;
+      opacity: 1;
+      box-shadow: 0 0 14px #10b981;
+    }
+    .pipeline-tracker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(11, 15, 25, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 10px;
+      position: relative;
+    }
+    .pipeline-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+      z-index: 2;
+      flex: 1;
+    }
+    .step-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 2px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #94a3b8;
+      transition: all 0.3s ease;
+    }
+    .pipeline-step.active .step-circle {
+      background: #2563eb;
+      border-color: #60a5fa;
+      color: white;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+    }
+    .pipeline-step.alert .step-circle {
+      background: #ef4444;
+      border-color: #f87171;
+      color: white;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+      animation: pulse-beacon 1s infinite;
+    }
+    .pipeline-step.completed .step-circle {
+      background: #10b981;
+      border-color: #34d399;
+      color: white;
+    }
+    .step-label {
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .pipeline-step.active .step-label { color: #60a5fa; }
+    .pipeline-step.alert .step-label { color: #f87171; }
+    .pipeline-step.completed .step-label { color: #34d399; }
+    .dispatch-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(15, 23, 42, 0.85));
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 8px;
+      padding: 12px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      animation: slideDown 0.3s ease-out;
+    }
+    .dispatch-card.active { display: flex; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .dispatch-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dispatch-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #fca5a5;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .countdown-ring-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .countdown-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #ef4444;
+      text-shadow: 0 0 10px var(--neon-red-glow);
+    }
+    .dispatch-body {
+      font-size: 0.74rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
+    .dispatch-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .reroute-banner {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(6, 182, 212, 0.1));
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .reroute-banner.active { display: flex; }
+    .reroute-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .reroute-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #d8b4fe;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .reroute-meta {
+      font-size: 0.7rem;
+      color: #94a3b8;
+    }
+    .chart-container {
+      position: relative;
+      height: 110px;
+      width: 100%;
+      background: rgba(11, 15, 25, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 6px;
+    }
+    .event-log-container {
+      flex: 1;
+      background: #060911;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem;
+      overflow-y: auto;
+      max-height: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .event-log-container::-webkit-scrollbar {
+      width: 4px;
+    }
+    .event-log-container::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 2px;
+    }
+    .log-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .log-time {
+      color: #64748b;
+      flex-shrink: 0;
+    }
+    .log-tag {
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .log-tag.info { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .log-tag.success { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .log-tag.alert { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    .log-tag.danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .log-msg { color: #e2e8f0; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+      background: #0d1322;
+      border: 1px solid var(--border-accent);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+    }
+    .modal-header {
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(11, 15, 25, 0.6);
+      padding: 6px 20px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .modal-tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      padding: 8px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .modal-tab-btn:hover { color: #fff; }
+    .modal-tab-btn.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+    }
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .modal-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    .spec-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .spec-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spec-text {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+    .kpi-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      text-align: left;
+    }
+    .kpi-table th {
+      background: rgba(30, 41, 59, 0.8);
+      padding: 10px 12px;
+      color: #94a3b8;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .kpi-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      color: #e2e8f0;
+    }
+    .kpi-table tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .badge-win {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-loss {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .badge-mid {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-amb-marker {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .amb-pulse {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.35);
+      border: 2px solid rgba(239, 68, 68, 0.7);
+      animation: pulse-ring 1.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.5); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .amb-icon-wrap {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #ef4444;
+      border: 2px solid #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      box-shadow: 0 0 14px #ef4444;
+      z-index: 2;
+      transition: transform 0.2s linear;
+    }
+    .custom-signal-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: #090d16;
+      border: 2px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.8);
+      transition: all 0.3s ease;
+    }
+    .custom-signal-icon.emergency {
+      border-color: #10b981;
+      color: #10b981;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.8);
+    }
+    .custom-signal-icon.clearance {
+      border-color: #f59e0b;
+      color: #f59e0b;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8);
+    }
+    .custom-signal-icon.gridlock {
+      border-color: #ef4444;
+      color: #ef4444;
+      box-shadow: 0 0 16px rgba(239, 68, 68, 0.9);
+      animation: pulse-beacon 1s infinite;
+    }
+    .gridlock-zone-marker {
+      background: rgba(239, 68, 68, 0.2);
+      border: 2px dashed #ef4444;
+      border-radius: 50%;
+      animation: pulse-beacon 1.5s infinite;
+    }
+    @media (max-width: 1024px) {
+      .main-workspace { flex-direction: column; overflow-y: auto; }
+      .viewport-panel { flex: 0 0 55vh; }
+      .command-panel { flex: 0 0 auto; min-height: 45vh; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand-section">
+      <div class="logo-badge">
+        <i class="fa-solid fa-truck-medical"></i>
+      </div>
+      <div>
+        <div class="brand-title">LifeLane Route <span>Clearance OS</span></div>
+        <div class="brand-sub">Two-Layer Emergency Mobility & Dynamic Clearance Engine</div>
+      </div>
+    </div>
+
+    <div class="status-badge" id="tripStatusBadge">
+      <div class="beacon"></div>
+      <span id="tripStatusText">AMB-108 | CRITICAL PRIORITY | EN ROUTE</span>
+    </div>
+
+    <div class="metrics-ribbon">
+      <div class="metric-pill">
+        <span class="metric-label">ETA to Hospital</span>
+        <span class="metric-val green" id="metricEta">5m 40s</span>
+      </div>
+      <div class="metric-pill">
+        <span class="metric-label">Distance Left</span>
+        <span class="metric-val blue" id="metricDist">3.8 km</span>
+      </div>
+      <div class="metric-pill">
+        <span class="metric-label">Vehicle Velocity</span>
+        <span class="metric-val" id="metricSpeed">64 km/h</span>
+      </div>
+      <div class="metric-pill">
+        <span class="metric-label">Time Saved vs Baseline</span>
+        <span class="metric-val green" id="metricSaved">+9m 12s</span>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <button class="btn btn-primary" id="btnPlayPause" onclick="togglePlayPause()">
+        <i class="fa-solid fa-play" id="playPauseIcon"></i> <span id="playPauseText">Start Simulation</span>
+      </button>
+      <button class="btn btn-danger" id="btnInjectJam" onclick="injectGridlock()">
+        <i class="fa-solid fa-triangle-exclamation"></i> Inject Gridlock Incident
+      </button>
+      <button class="btn btn-secondary" onclick="resetSimulation()">
+        <i class="fa-solid fa-rotate-left"></i> Reset
+      </button>
+      <button class="btn btn-secondary btn-icon" id="btnSound" onclick="toggleAudio()" title="Toggle Siren Sound">
+        <i class="fa-solid fa-volume-xmark" id="soundIcon"></i>
+      </button>
+      <button class="btn btn-accent" onclick="openSpecModal()">
+        <i class="fa-solid fa-book-bookmark"></i> Hackathon Pitch Deck
+      </button>
+    </div>
+  </header>
+
+  <div class="main-workspace">
+    <div class="viewport-panel">
+      <div id="map"></div>
+
+      <div class="map-overlay-hud">
+        <div class="hud-card">
+          <div class="hud-title"><i class="fa-solid fa-satellite-dish"></i> NavIC / GAGAN Multi-Band GNSS</div>
+          <div class="hud-coords" id="hudCoords">LAT: 12.9716° N | LON: 77.5946° E | HDOP: 0.72m</div>
+        </div>
+      </div>
+
+      <div class="map-legend">
+        <div class="legend-item">
+          <div class="legend-line" style="background: #10b981; box-shadow: 0 0 8px #10b981;"></div>
+          <span>Active Green Corridor</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background: #a855f7; border-top: 2px dashed #06b6d4;"></div>
+          <span>Layer 2 Fallback Arterial Bypass</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #10b981;"></div>
+          <span>Preempted Junction (Emergency Green)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #ef4444;"></div>
+          <span>Gridlock Zone / Conflict Point</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="command-panel">
+      
+      <div class="panel-section">
+        <div class="section-header">
+          <span class="section-tag tag-layer1"><i class="fa-solid fa-bolt"></i> Layer 1</span>
+          <span class="section-title">Autonomous Signal Preemption Monitor</span>
+        </div>
+
+        <div class="traffic-signal-card">
+          <div class="signal-info">
+            <div class="signal-junction-name" id="l1JunctionName">Junction 1: Metro Central</div>
+            <div style="font-size: 0.72rem; color: #94a3b8;" id="l1TriggerInfo">Dynamic Trigger: 380m (ETA 22s)</div>
+            <div class="signal-status-badge" id="l1StatusBadge" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">
+              <i class="fa-solid fa-circle-check"></i> <span id="l1StatusText">EMERGENCY_GREEN LOCKED</span>
+            </div>
+          </div>
+          <div class="traffic-light-graphic">
+            <div class="lamp red" id="lampRed"></div>
+            <div class="lamp amber" id="lampAmber"></div>
+            <div class="lamp green active" id="lampGreen"></div>
+          </div>
+        </div>
+
+        <div class="layer1-grid">
+          <div class="telemetry-box">
+            <div class="telemetry-title">
+              <span>Time to Next Stopline</span>
+              <i class="fa-solid fa-stopwatch"></i>
+            </div>
+            <div class="telemetry-value" id="l1TimeNext">14.2s</div>
+          </div>
+          <div class="telemetry-box">
+            <div class="telemetry-title">
+              <span>Clearance Lock Window</span>
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <div class="telemetry-value" id="l1ClearanceWin" style="color: #34d399;">35s Hold</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-header">
+          <span class="section-tag tag-layer2"><i class="fa-solid fa-shield-halved"></i> Layer 2</span>
+          <span class="section-title">Congestion Prediction & Escalation Engine</span>
+        </div>
+
+        <div class="pipeline-tracker">
+          <div class="pipeline-step active" id="pipeStep1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Monitoring</div>
+          </div>
+          <div class="pipeline-step" id="pipeStep2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Jam Predicted</div>
+          </div>
+          <div class="pipeline-step" id="pipeStep3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Police Alert</div>
+          </div>
+          <div class="pipeline-step" id="pipeStep4">
+            <div class="step-circle">4</div>
+            <div class="step-label">Fallback Reroute</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <canvas id="congestionChart"></canvas>
+        </div>
+
+        <div class="dispatch-card" id="dispatchCard">
+          <div class="dispatch-header">
+            <div class="dispatch-title">
+              <i class="fa-solid fa-bullhorn"></i> Police Dispatch Command Dispatched
+            </div>
+            <div class="countdown-ring-wrap">
+              <span style="font-size: 0.7rem; color: #fca5a5;">Clearance Timeout:</span>
+              <span class="countdown-val" id="countdownVal">15s</span>
+            </div>
+          </div>
+          <div class="dispatch-body">
+            Automated SOS transmitted to <strong>PCR Van 07 (Central East)</strong>. Physical bottleneck at Junction 2 requires manual lane purging.
+          </div>
+          <div class="dispatch-actions">
+            <button class="btn btn-danger" style="flex: 1; padding: 6px;" onclick="executeRerouteManual()">
+              <i class="fa-solid fa-route"></i> Immediate Fallback Reroute
+            </button>
+            <button class="btn btn-secondary" style="padding: 6px;" onclick="resolvePoliceClearing()">
+              <i class="fa-solid fa-check"></i> Police Cleared Lane
+            </button>
+          </div>
+        </div>
+
+        <div class="reroute-banner" id="rerouteBanner">
+          <div class="reroute-text">
+            <div class="reroute-title">
+              <i class="fa-solid fa-diamond-turn-right"></i> Bypass Arterial Activated
+            </div>
+            <div class="reroute-meta" id="rerouteMetaText">
+              Bypassed Junction 2 Gridlock | Saved 14.5 mins vs Primary Path
+            </div>
+          </div>
+          <span class="badge-win">OPTIMIZED</span>
+        </div>
+      </div>
+
+      <div class="panel-section" style="flex: 1; border-bottom: none;">
+        <div class="section-header">
+          <span class="section-tag tag-audit"><i class="fa-solid fa-terminal"></i> Telemetry</span>
+          <span class="section-title">Trip Audit & Event Stream</span>
+          <button class="btn btn-secondary btn-icon" style="padding: 2px 6px; font-size: 0.65rem;" onclick="clearLogs()">
+            Clear
+          </button>
+        </div>
+
+        <div class="event-log-container" id="eventLogs"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="specModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-award" style="color: #f59e0b;"></i> LifeLane Route: Technical Pitch Deck & Engineering Architecture
+        </div>
+        <button class="btn btn-secondary btn-icon" onclick="closeSpecModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" id="tabBtn1" onclick="switchSpecTab(1)">
+          <i class="fa-solid fa-layer-group"></i> Two-Layer Architecture
+        </button>
+        <button class="modal-tab-btn" id="tabBtn2" onclick="switchSpecTab(2)">
+          <i class="fa-solid fa-microchip"></i> Real Hardware & GNSS
+        </button>
+        <button class="modal-tab-btn" id="tabBtn3" onclick="switchSpecTab(3)">
+          <i class="fa-solid fa-chart-column"></i> Comparative KPIs & Impact
+        </button>
+      </div>
+
+      <div class="modal-body" id="tabContent1">
+        <div class="spec-card">
+          <div class="spec-title"><i class="fa-solid fa-signal"></i> Layer 1: Autonomous Micro-Level Signal Preemption</div>
+          <div class="spec-text">
+            Traditional green corridors rely on manual traffic police radioing ahead or basic fixed geofences. LifeLane Route Layer 1 uses a dynamic kinematic trigger distance calculated as <code>D_trigger = (v_amb * t_clearance) + D_queue_dissipation</code>. 
+            When the ambulance crosses this dynamic threshold, an encrypted MQTT / DSRC packet preempts the junction controller. The controller initiates <code>SAFE_CLEARANCE</code> (all-red / yellow purging cross-traffic) before locking in <code>EMERGENCY_GREEN</code>. Once GNSS confirms passage, it gracefully restores standard SCATS/SCOOT cycle timing without inducing secondary city gridlocks.
+          </div>
+        </div>
+
+        <div class="spec-card">
+          <div class="spec-title"><i class="fa-solid fa-shield-halved"></i> Layer 2: Macro-Level Predictive Escalation & Fallback Reroute</div>
+          <div class="spec-text">
+            When a bottleneck zone experiences total paralysis (e.g. multi-car crash, heavy protests, waterlogging), no signal preemption can move stationary vehicles out of the way. Layer 2 integrates probe telemetry (TomTom/Mappls live velocity vectors).
+            Upon detecting standstill velocity (<5 km/h) ahead of Junction 2, Layer 2 enters <code>JAM_PREDICTED</code> and instantly fires a high-priority dispatch to the nearest police patrol unit (PCR) with a 15-second clearance deadline. If physical clearance cannot be confirmed within 15 seconds, the autonomous decision engine overrides the route, engaging the <strong>Bypass Arterial Corridor</strong> and dynamically rescheduling downstream junction preemptions.
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body" id="tabContent2" style="display: none;">
+        <div class="spec-card">
+          <div class="spec-title"><i class="fa-solid fa-satellite"></i> NavIC / GAGAN Multi-Band Hardware vs Smartphone GPS</div>
+          <div class="spec-text">
+            Standard smartphone GPS (Android FusedLocationProviderClient) suffers from severe urban canyon multipath reflections, aggressive OS battery throttling, and latency spikes (3-8 seconds jitter). LifeLane Route specifies an onboard automotive-grade telematics box:
+          </div>
+          <ul style="padding-left: 20px; font-size: 0.78rem; color: #cbd5e1; line-height: 1.6;">
+            <li><strong>GNSS Engine:</strong> u-blox NEO-M8N / ZED-F9P supporting India's NavIC (IRNSS L5/S-band) & GAGAN SBAS differential correction delivering sub-meter (<0.8m) accuracy.</li>
+            <li><strong>Compute & Telematics:</strong> ESP32-S3 Dual Core + Quectel EG25-G LTE Cat-4 with dual SIM failover and hardware watchdog timer (0.01% packet drop rate).</li>
+            <li><strong>Security:</strong> ECDSA P-256 cryptographic message signing preventing rogue vehicle corridor spoofing.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="modal-body" id="tabContent3" style="display: none;">
+        <div class="spec-card">
+          <div class="spec-title"><i class="fa-solid fa-table-cells"></i> Comparative Performance Matrix</div>
+          <div class="spec-text" style="margin-bottom: 8px;">
+            Benchmarked against historical transit data across high-density urban corridors:
+          </div>
+          <table class="kpi-table">
+            <thead>
+              <tr>
+                <th>KPI Metric</th>
+                <th>Standard Ambulance</th>
+                <th>Layer 1 Only (Raipur Model)</th>
+                <th>LifeLane Route (Layer 1 + 2)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Average Transit Time (8km run)</td>
+                <td><span class="badge-loss">24.5 mins</span></td>
+                <td><span class="badge-mid">14.2 mins</span></td>
+                <td><span class="badge-win">8.4 mins (-65%)</span></td>
+              </tr>
+              <tr>
+                <td>Junction Wait Stoppages</td>
+                <td><span class="badge-loss">5 - 8 red lights</span></td>
+                <td><span class="badge-mid">0 - 1 (except gridlocks)</span></td>
+                <td><span class="badge-win">0 red lights (guaranteed)</span></td>
+              </tr>
+              <tr>
+                <td>Unforeseen Jam Recovery</td>
+                <td><span class="badge-loss">Trapped in bottleneck</span></td>
+                <td><span class="badge-loss">Trapped (Signal turns green, cars stuck)</span></td>
+                <td><span class="badge-win">Predictive bypass reroute in <15s</span></td>
+              </tr>
+              <tr>
+                <td>Dispatch-to-Action Latency</td>
+                <td><span class="badge-loss">Manual phone calls (4-6m)</span></td>
+                <td><span class="badge-mid">Auto signal MQTT (200ms)</span></td>
+                <td><span class="badge-win">Auto signal + PCR dispatch (180ms)</span></td>
+              </tr>
+              <tr>
+                <td>Golden Hour Survival Adherence</td>
+                <td><span class="badge-loss">42%</span></td>
+                <td><span class="badge-mid">71%</span></td>
+                <td><span class="badge-win">94.8%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WAYPOINTS_PRIMARY = [
+      { lat: 12.9716, lng: 77.5946, name: "Crash Site (MG Road)" },
+      { lat: 12.9735, lng: 77.5985, name: "Brigade Corner" },
+      { lat: 12.9760, lng: 77.6035, name: "Trinity Circle" },
+      { lat: 12.9785, lng: 77.6080, name: "Junction 1: Metro Central", isJunction: true, id: "J1" },
+      { lat: 12.9810, lng: 77.6130, name: "Indiranagar Approach" },
+      { lat: 12.9835, lng: 77.6180, name: "100ft Road Cross" },
+      { lat: 12.9860, lng: 77.6230, name: "Junction 2: Ring Road Bottleneck", isJunction: true, id: "J2" },
+      { lat: 12.9895, lng: 77.6315, name: "Defence Colony Entry" },
+      { lat: 12.9930, lng: 77.6400, name: "Junction 3: Civil Lines", isJunction: true, id: "J3" },
+      { lat: 12.9970, lng: 77.6480, name: "Apollo City Trauma Center", isDestination: true }
+    ];
+
+    const WAYPOINTS_BYPASS = [
+      { lat: 12.9785, lng: 77.6080, name: "Junction 1: Metro Central" },
+      { lat: 12.9750, lng: 77.6140, name: "Airport Arterial Diversion" },
+      { lat: 12.9740, lng: 77.6250, name: "Bypass Flyover East" },
+      { lat: 12.9780, lng: 77.6360, name: "Junction 2B: Express Link", isJunction: true, id: "J2B" },
+      { lat: 12.9860, lng: 77.6420, name: "Hospital North Link" },
+      { lat: 12.9970, lng: 77.6480, name: "Apollo City Trauma Center", isDestination: true }
+    ];
+
+    let currentRoute = [...WAYPOINTS_PRIMARY];
+    let routeProgressIndex = 0;
+    let interpolationFraction = 0;
+    let isRunning = false;
+    let isRerouted = false;
+    let isGridlockInjected = false;
+    let simInterval = null;
+    let simSpeedMultiplier = 1;
+    let currentSpeed = 64;
+    let policeCountdown = 15;
+    let policeCountdownInterval = null;
+    let audioContext = null;
+    let sirenOsc = null;
+    let sirenGain = null;
+    let isAudioEnabled = false;
+
+    const map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([12.9820, 77.6180], 14);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+      subdomains: 'abcd'
+    }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    const primaryPolyline = L.polyline(WAYPOINTS_PRIMARY.map(p => [p.lat, p.lng]), {
+      color: '#10b981',
+      weight: 6,
+      opacity: 0.85,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+
+    const bypassPolyline = L.polyline(WAYPOINTS_BYPASS.map(p => [p.lat, p.lng]), {
+      color: '#a855f7',
+      weight: 4,
+      dashArray: '8, 10',
+      opacity: 0.5
+    }).addTo(map);
+
+    let gridlockCircle = null;
+
+    const ambIcon = L.divIcon({
+      className: 'custom-amb-div-icon',
+      html: `
+        <div class="custom-amb-marker">
+          <div class="amb-pulse" id="ambPulseRing"></div>
+          <div class="amb-icon-wrap" id="ambIconInner">
+            <i class="fa-solid fa-ambulance"></i>
+          </div>
+        </div>
+      `,
+      iconSize: [44, 44],
+      iconAnchor: [22, 22]
+    });
+
+    const ambMarker = L.marker([WAYPOINTS_PRIMARY[0].lat, WAYPOINTS_PRIMARY[0].lng], {
+      icon: ambIcon,
+      zIndexOffset: 1000
+    }).addTo(map);
+
+    const junctionMarkers = {};
+    function createJunctionIcon(stateClass, label) {
+      return L.divIcon({
+        className: 'junc-div',
+        html: `<div class="custom-signal-icon ${stateClass}" title="${label}"><i class="fa-solid fa-traffic-light"></i></div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+    }
+
+    [
+      { id: "J1", lat: 12.9785, lng: 77.6080, name: "Junction 1: Metro Central" },
+      { id: "J2", lat: 12.9860, lng: 77.6230, name: "Junction 2: Ring Road Bottleneck" },
+      { id: "J3", lat: 12.9930, lng: 77.6400, name: "Junction 3: Civil Lines" },
+      { id: "J2B", lat: 12.9780, lng: 77.6360, name: "Junction 2B: Express Link" }
+    ].forEach(j => {
+      const m = L.marker([j.lat, j.lng], {
+        icon: createJunctionIcon('', j.name)
+      }).addTo(map);
+      m.bindPopup(`<b style="color:#0f172a">${j.name}</b><br><span style="font-size:11px;color:#475569">V2X Preemption Node ${j.id}</span>`);
+      junctionMarkers[j.id] = m;
+    });
+
+    const destIcon = L.divIcon({
+      className: 'dest-div',
+      html: `<div style="width:34px;height:34px;border-radius:50%;background:#ef4444;border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 0 14px #ef4444"><i class="fa-solid fa-hospital"></i></div>`,
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
+    });
+    L.marker([12.9970, 77.6480], { icon: destIcon }).addTo(map)
+      .bindPopup(`<b style="color:#0f172a">Apollo City Trauma Center</b><br><span style="font-size:11px;color:#475569">Level-1 Emergency Trauma Ward</span>`);
+
+    let congestionChart = null;
+    function initCongestionChart() {
+      const ctx = document.getElementById('congestionChart').getContext('2d');
+      congestionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['T-30s', 'T-25s', 'T-20s', 'T-15s', 'T-10s', 'T-5s', 'Now'],
+          datasets: [
+            {
+              label: 'Segment Velocity (km/h)',
+              data: [52, 50, 48, 47, 45, 42, 40],
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.35,
+              pointRadius: 3,
+              pointBackgroundColor: '#10b981'
+            },
+            {
+              label: 'Jam Predictor Threshold',
+              data: [15, 15, 15, 15, 15, 15, 15],
+              borderColor: '#ef4444',
+              borderDash: [4, 4],
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 300 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              backgroundColor: 'rgba(15, 23, 42, 0.9)',
+              titleColor: '#fff',
+              bodyColor: '#cbd5e1'
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', font: { size: 9, family: 'JetBrains Mono' } }
+            },
+            y: {
+              min: 0,
+              max: 70,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', font: { size: 9, family: 'JetBrains Mono' } }
+            }
+          }
+        }
+      });
+    }
+
+    function addLog(tag, type, message) {
+      const logBox = document.getElementById('eventLogs');
+      const now = new Date();
+      const timeStr = now.toTimeString().split(' ')[0] + '.' + String(Math.floor(now.getMilliseconds() / 100));
+      
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.innerHTML = `
+        <span class="log-time">[${timeStr}]</span>
+        <span class="log-tag ${type}">${tag}</span>
+        <span class="log-msg">${message}</span>
+      `;
+      logBox.appendChild(item);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function clearLogs() {
+      document.getElementById('eventLogs').innerHTML = '';
+      addLog('SYS', 'info', 'Telemetry stream reset. Listening on MQTT /v2x/amb-108/#');
+    }
+
+    function togglePlayPause() {
+      if (isRunning) {
+        pauseSimulation();
+      } else {
+        startSimulation();
+      }
+    }
+
+    function startSimulation() {
+      if (isRunning) return;
+      isRunning = true;
+      document.getElementById('playPauseIcon').className = 'fa-solid fa-pause';
+      document.getElementById('playPauseText').innerText = 'Pause';
+      document.getElementById('btnPlayPause').className = 'btn btn-secondary';
+      addLog('SIM', 'info', 'Simulation started. Telemetry transmission online.');
+      
+      simInterval = setInterval(updateSimulationStep, 100);
+      if (isAudioEnabled) playSirenAudio();
+    }
+
+    function pauseSimulation() {
+      isRunning = false;
+      document.getElementById('playPauseIcon').className = 'fa-solid fa-play';
+      document.getElementById('playPauseText').innerText = 'Resume';
+      document.getElementById('btnPlayPause').className = 'btn btn-primary';
+      clearInterval(simInterval);
+      stopSirenAudio();
+      addLog('SIM', 'info', 'Simulation paused.');
+    }
+
+    function resetSimulation() {
+      pauseSimulation();
+      routeProgressIndex = 0;
+      interpolationFraction = 0;
+      isRerouted = false;
+      isGridlockInjected = false;
+      currentSpeed = 64;
+      currentRoute = [...WAYPOINTS_PRIMARY];
+
+      if (policeCountdownInterval) clearInterval(policeCountdownInterval);
+      policeCountdown = 15;
+
+      primaryPolyline.setLatLngs(WAYPOINTS_PRIMARY.map(p => [p.lat, p.lng]));
+      primaryPolyline.setStyle({ color: '#10b981', weight: 6, opacity: 0.85, dashArray: null });
+      bypassPolyline.setStyle({ color: '#a855f7', weight: 4, dashArray: '8, 10', opacity: 0.5 });
+
+      if (gridlockCircle) {
+        map.removeLayer(gridlockCircle);
+        gridlockCircle = null;
+      }
+
+      ambMarker.setLatLng([currentRoute[0].lat, currentRoute[0].lng]);
+      map.panTo([currentRoute[0].lat, currentRoute[0].lng]);
+
+      document.getElementById('dispatchCard').classList.remove('active');
+      document.getElementById('rerouteBanner').classList.remove('active');
+      setPipelineStep(1);
+
+      updateL1SignalGraphic('J1', 'EMERGENCY_GREEN LOCKED', 'green', '380m (ETA 22s)');
+      Object.keys(junctionMarkers).forEach(k => {
+        junctionMarkers[k].setIcon(createJunctionIcon('', ''));
+      });
+
+      congestionChart.data.datasets[0].data = [52, 50, 48, 47, 45, 42, 40];
+      congestionChart.data.datasets[0].borderColor = '#10b981';
+      congestionChart.data.datasets[0].backgroundColor = 'rgba(16, 185, 129, 0.1)';
+      congestionChart.update();
+
+      document.getElementById('tripStatusBadge').style.background = 'rgba(239, 68, 68, 0.12)';
+      document.getElementById('tripStatusBadge').style.borderColor = 'rgba(239, 68, 68, 0.35)';
+      document.getElementById('tripStatusText').innerText = 'AMB-108 | CRITICAL PRIORITY | EN ROUTE';
+
+      updateMetricsDisplay(3.8, 340, 64, 552);
+      clearLogs();
+      addLog('SYS', 'info', 'LifeLane Route core engine initialized.');
+    }
+
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const phi1 = lat1 * Math.PI / 180;
+      const phi2 = lat2 * Math.PI / 180;
+      const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+      const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+                Math.cos(phi1) * Math.cos(phi2) *
+                Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+      const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180);
+      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180);
+      return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function updateSimulationStep() {
+      if (routeProgressIndex >= currentRoute.length - 1) {
+        finishTrip();
+        return;
+      }
+
+      const p1 = currentRoute[routeProgressIndex];
+      const p2 = currentRoute[routeProgressIndex + 1];
+
+      const segmentDist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+      const stepDist = (currentSpeed * 1000 / 3600) * 0.1 * simSpeedMultiplier;
+      const stepFraction = stepDist / (segmentDist || 1);
+
+      interpolationFraction += stepFraction;
+
+      if (interpolationFraction >= 1) {
+        interpolationFraction = 0;
+        routeProgressIndex++;
+        if (routeProgressIndex >= currentRoute.length - 1) {
+          finishTrip();
+          return;
+        }
+      }
+
+      const currLat = p1.lat + (p2.lat - p1.lat) * interpolationFraction;
+      const currLng = p1.lng + (p2.lng - p1.lng) * interpolationFraction;
+
+      ambMarker.setLatLng([currLat, currLng]);
+      
+      const bearing = calculateBearing(p1.lat, p1.lng, p2.lat, p2.lng);
+      const ambInner = document.getElementById('ambIconInner');
+      if (ambInner) {
+        ambInner.style.transform = `rotate(${bearing - 45}deg)`;
+      }
+
+      document.getElementById('hudCoords').innerText = 
+        `LAT: ${currLat.toFixed(5)}° N | LON: ${currLng.toFixed(5)}° E | HDOP: 0.68m | HEADING: ${Math.round(bearing)}°`;
+
+      handleGeofenceInteractions(currLat, currLng);
+      updateLiveMetrics(currLat, currLng);
+    }
+
+    function handleGeofenceInteractions(lat, lng) {
+      if (!isRerouted) {
+        const distToJ1 = calculateDistance(lat, lng, 12.9785, 77.6080);
+        const distToJ2 = calculateDistance(lat, lng, 12.9860, 77.6230);
+        const distToJ3 = calculateDistance(lat, lng, 12.9930, 77.6400);
+
+        if (distToJ1 < 450 && distToJ1 > 40) {
+          updateL1SignalGraphic('J1', 'EMERGENCY_GREEN LOCKED', 'green', `${Math.round(distToJ1)}m (Corridor Held)`);
+          junctionMarkers['J1'].setIcon(createJunctionIcon('emergency', 'J1: Emergency Green'));
+          document.getElementById('l1TimeNext').innerText = `${(distToJ1 / (currentSpeed * 1000 / 3600)).toFixed(1)}s`;
+        } else if (distToJ1 <= 40 && distToJ1 > 0) {
+          junctionMarkers['J1'].setIcon(createJunctionIcon('', 'J1'));
+        }
+
+        if (distToJ2 < 550 && distToJ2 > 80) {
+          if (isGridlockInjected) {
+            updateL1SignalGraphic('J2', 'GRIDLOCK PARALYSIS', 'red', `${Math.round(distToJ2)}m (STALLED)`);
+            junctionMarkers['J2'].setIcon(createJunctionIcon('gridlock', 'J2: Gridlock Zone'));
+            document.getElementById('l1TimeNext').innerText = 'INF (BLOCKED)';
+            if (!isRerouted && currentSpeed > 10) {
+              currentSpeed = Math.max(5, currentSpeed - 2);
+            }
+          } else {
+            updateL1SignalGraphic('J2', 'SAFE_CLEARANCE PURGE', 'amber', `${Math.round(distToJ2)}m (Clearing Cross Traffic)`);
+            junctionMarkers['J2'].setIcon(createJunctionIcon('clearance', 'J2: Safe Clearance'));
+            document.getElementById('l1TimeNext').innerText = `${(distToJ2 / (currentSpeed * 1000 / 3600)).toFixed(1)}s`;
+          }
+        }
+
+        if (distToJ3 < 400 && distToJ3 > 40) {
+          updateL1SignalGraphic('J3', 'EMERGENCY_GREEN LOCKED', 'green', `${Math.round(distToJ3)}m`);
+          junctionMarkers['J3'].setIcon(createJunctionIcon('emergency', 'J3'));
+        }
+      } else {
+        const distToJ2B = calculateDistance(lat, lng, 12.9780, 77.6360);
+        if (distToJ2B < 450 && distToJ2B > 30) {
+          updateL1SignalGraphic('J2B', 'BYPASS_GREEN PREEMPTED', 'green', `${Math.round(distToJ2B)}m (Express Link)`);
+          junctionMarkers['J2B'].setIcon(createJunctionIcon('emergency', 'J2B: Bypass Link'));
+          document.getElementById('l1TimeNext').innerText = `${(distToJ2B / (currentSpeed * 1000 / 3600)).toFixed(1)}s`;
+        }
+      }
+    }
+
+    function updateL1SignalGraphic(juncId, statusText, color, triggerText) {
+      document.getElementById('l1JunctionName').innerText = 
+        juncId === 'J1' ? 'Junction 1: Metro Central' :
+        juncId === 'J2' ? 'Junction 2: Ring Road Bottleneck' :
+        juncId === 'J2B' ? 'Junction 2B: Express Link' : 'Junction 3: Civil Lines';
+      
+      document.getElementById('l1TriggerInfo').innerText = `Dynamic Trigger: ${triggerText}`;
+      
+      const badge = document.getElementById('l1StatusBadge');
+      badge.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${statusText}</span>`;
+      
+      const lampRed = document.getElementById('lampRed');
+      const lampAmber = document.getElementById('lampAmber');
+      const lampGreen = document.getElementById('lampGreen');
+
+      lampRed.classList.remove('active');
+      lampAmber.classList.remove('active');
+      lampGreen.classList.remove('active');
+
+      if (color === 'red') {
+        lampRed.classList.add('active');
+        badge.style.background = 'rgba(239, 68, 68, 0.2)';
+        badge.style.color = '#f87171';
+      } else if (color === 'amber') {
+        lampAmber.classList.add('active');
+        badge.style.background = 'rgba(245, 158, 11, 0.2)';
+        badge.style.color = '#fbbf24';
+      } else {
+        lampGreen.classList.add('active');
+        badge.style.background = 'rgba(16, 185, 129, 0.2)';
+        badge.style.color = '#34d399';
+      }
+    }
+
+    function setPipelineStep(stepNumber) {
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById(`pipeStep${i}`);
+        el.classList.remove('active', 'alert', 'completed');
+        if (i < stepNumber) {
+          el.classList.add('completed');
+        } else if (i === stepNumber) {
+          if (stepNumber === 2 || stepNumber === 3) {
+            el.classList.add('alert');
+          } else {
+            el.classList.add('active');
+          }
+        }
+      }
+    }
+
+    function injectGridlock() {
+      if (isGridlockInjected) return;
+      isGridlockInjected = true;
+
+      addLog('L2-CONGEST', 'danger', 'TomTom Vector Alert: Segment 100ft-RingRoad velocity dropped to 3.2 km/h (Paralysis).');
+      addLog('L2-ENGINE', 'alert', 'State Transition: MONITORING -> JAM_PREDICTED at Junction 2.');
+      setPipelineStep(2);
+
+      congestionChart.data.datasets[0].data = [40, 32, 22, 12, 6, 3, 2];
+      congestionChart.data.datasets[0].borderColor = '#ef4444';
+      congestionChart.data.datasets[0].backgroundColor = 'rgba(239, 68, 68, 0.15)';
+      congestionChart.update();
+
+      if (!gridlockCircle) {
+        gridlockCircle = L.circle([12.9860, 77.6230], {
+          radius: 160,
+          color: '#ef4444',
+          weight: 2,
+          fillColor: '#ef4444',
+          fillOpacity: 0.35,
+          dashArray: '4, 4'
+        }).addTo(map);
+        gridlockCircle.bindPopup('<b style="color:#ef4444">GRIDLOCK ZONE DETECTED</b><br>Traffic Velocity: 3 km/h<br>Tailback: 650m');
+      }
+
+      setTimeout(() => {
+        setPipelineStep(3);
+        addLog('L2-POLICE', 'danger', 'High-Priority Alert dispatched to PCR Van 07 (Central East). 15s clearance timer started.');
+        document.getElementById('dispatchCard').classList.add('active');
+        startPoliceCountdown();
+      }, 1000);
+    }
+
+    function startPoliceCountdown() {
+      policeCountdown = 15;
+      document.getElementById('countdownVal').innerText = `${policeCountdown}s`;
+      if (policeCountdownInterval) clearInterval(policeCountdownInterval);
+
+      policeCountdownInterval = setInterval(() => {
+        policeCountdown--;
+        document.getElementById('countdownVal').innerText = `${policeCountdown}s`;
+
+        if (policeCountdown <= 0) {
+          clearInterval(policeCountdownInterval);
+          addLog('L2-TIMEOUT', 'danger', '15-second police clearance timeout expired. Executing autonomous fallback reroute.');
+          executeRerouteAutomatic();
+        }
+      }, 1000);
+    }
+
+    function resolvePoliceClearing() {
+      if (policeCountdownInterval) clearInterval(policeCountdownInterval);
+      document.getElementById('dispatchCard').classList.remove('active');
+      isGridlockInjected = false;
+      addLog('L2-RESOLVE', 'success', 'Police PCR Van 07 manually cleared bottleneck lane. Primary Green Corridor restored.');
+      setPipelineStep(1);
+      currentSpeed = 68;
+      if (gridlockCircle) {
+        map.removeLayer(gridlockCircle);
+        gridlockCircle = null;
+      }
+      congestionChart.data.datasets[0].data = [12, 25, 42, 54, 60, 65, 68];
+      congestionChart.data.datasets[0].borderColor = '#10b981';
+      congestionChart.data.datasets[0].backgroundColor = 'rgba(16, 185, 129, 0.1)';
+      congestionChart.update();
+    }
+
+    function executeRerouteManual() {
+      if (policeCountdownInterval) clearInterval(policeCountdownInterval);
+      addLog('L2-OVERRIDE', 'alert', 'Manual Fallback Reroute triggered by operator.');
+      executeRerouteAction();
+    }
+
+    function executeRerouteAutomatic() {
+      executeRerouteAction();
+    }
+
+    function executeRerouteAction() {
+      if (isRerouted) return;
+      isRerouted = true;
+
+      document.getElementById('dispatchCard').classList.remove('active');
+      document.getElementById('rerouteBanner').classList.add('active');
+      setPipelineStep(4);
+
+      primaryPolyline.setStyle({ color: '#64748b', weight: 4, opacity: 0.4, dashArray: '6, 6' });
+      bypassPolyline.setStyle({ color: '#06b6d4', weight: 6, dashArray: null, opacity: 0.95 });
+
+      currentRoute = [...WAYPOINTS_BYPASS];
+      routeProgressIndex = 0;
+      interpolationFraction = 0;
+      currentSpeed = 70;
+
+      document.getElementById('tripStatusBadge').style.background = 'rgba(168, 85, 247, 0.2)';
+      document.getElementById('tripStatusBadge').style.borderColor = 'rgba(168, 85, 247, 0.5)';
+      document.getElementById('tripStatusText').innerText = 'AMB-108 | CRITICAL PRIORITY | ARTERIAL BYPASS ACTIVE';
+
+      addLog('L2-REROUTE', 'success', 'Corridor switched to Express Link. Downstream signals re-synchronized.');
+      addLog('L1-V2X', 'info', 'V2X Preemption handover issued to Junction 2B (Express Link).');
+      updateL1SignalGraphic('J2B', 'PREPARING PREEMPTION', 'amber', '420m (ETA 21s)');
+    }
+
+    function updateLiveMetrics(lat, lng) {
+      const dest = currentRoute[currentRoute.length - 1];
+      const distM = calculateDistance(lat, lng, dest.lat, dest.lng);
+      const distKm = (distM / 1000).toFixed(1);
+
+      const etaSeconds = Math.max(15, Math.round(distM / ((currentSpeed * 1000 / 3600) || 1)));
+      const mins = Math.floor(etaSeconds / 60);
+      const secs = etaSeconds % 60;
+
+      const timeSavedSeconds = Math.max(120, Math.round(etaSeconds * 1.8));
+      const savedMins = Math.floor(timeSavedSeconds / 60);
+      const savedSecs = timeSavedSeconds % 60;
+
+      updateMetricsDisplay(distKm, `${mins}m ${secs}s`, currentSpeed, `+${savedMins}m ${savedSecs}s`);
+    }
+
+    function updateMetricsDisplay(dist, eta, speed, saved) {
+      document.getElementById('metricDist').innerText = typeof dist === 'number' ? `${dist} km` : `${dist} km`;
+      document.getElementById('metricEta').innerText = typeof eta === 'string' ? eta : `${eta}s`;
+      document.getElementById('metricSpeed').innerText = `${Math.round(speed)} km/h`;
+      document.getElementById('metricSaved').innerText = typeof saved === 'string' ? saved : `+${saved}s`;
+    }
+
+    function finishTrip() {
+      pauseSimulation();
+      currentSpeed = 0;
+      document.getElementById('metricSpeed').innerText = '0 km/h';
+      document.getElementById('metricDist').innerText = '0.0 km';
+      document.getElementById('metricEta').innerText = 'ARRIVED';
+      document.getElementById('metricEta').className = 'metric-val green';
+      document.getElementById('tripStatusText').innerText = 'AMB-108 | PATIENT DELIVERED | APOLLO TRAUMA CENTER';
+      document.getElementById('tripStatusBadge').style.background = 'rgba(16, 185, 129, 0.2)';
+      document.getElementById('tripStatusBadge').style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      
+      addLog('TRIP', 'success', 'Ambulance successfully reached destination trauma unit.');
+      addLog('SYS', 'info', 'All preemption locks restored to normal city traffic controllers.');
+      alert('Ambulance has reached Apollo City Trauma Center!\nAll traffic signals safely restored to SCATS normal cycle.');
+    }
+
+    function toggleAudio() {
+      if (!isAudioEnabled) {
+        isAudioEnabled = true;
+        document.getElementById('soundIcon').className = 'fa-solid fa-volume-high';
+        document.getElementById('btnSound').style.color = '#34d399';
+        if (isRunning) playSirenAudio();
+      } else {
+        isAudioEnabled = false;
+        document.getElementById('soundIcon').className = 'fa-solid fa-volume-xmark';
+        document.getElementById('btnSound').style.color = '';
+        stopSirenAudio();
+      }
+    }
+
+    function playSirenAudio() {
+      if (!isAudioEnabled) return;
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+
+        sirenOsc = audioContext.createOscillator();
+        sirenGain = audioContext.createGain();
+
+        sirenOsc.type = 'sawtooth';
+        sirenGain.gain.setValueAtTime(0.04, audioContext.currentTime);
+
+        const now = audioContext.currentTime;
+        for (let i = 0; i < 60; i++) {
+          sirenOsc.frequency.linearRampToValueAtTime(880, now + i * 1.0);
+          sirenOsc.frequency.linearRampToValueAtTime(650, now + i * 1.0 + 0.5);
+        }
+
+        sirenOsc.connect(sirenGain);
+        sirenGain.connect(audioContext.destination);
+        sirenOsc.start();
+      } catch (e) {
+      }
+    }
+
+    function stopSirenAudio() {
+      if (sirenOsc) {
+        try {
+          sirenOsc.stop();
+          sirenOsc.disconnect();
+        } catch(e) {}
+        sirenOsc = null;
+      }
+    }
+
+    function openSpecModal() {
+      document.getElementById('specModal').classList.add('open');
+    }
+
+    function closeSpecModal() {
+      document.getElementById('specModal').classList.remove('open');
+    }
+
+    function switchSpecTab(tabNum) {
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById(`tabBtn${i}`).classList.remove('active');
+        document.getElementById(`tabContent${i}`).style.display = 'none';
+      }
+      document.getElementById(`tabBtn${tabNum}`).classList.add('active');
+      document.getElementById(`tabContent${tabNum}`).style.display = 'flex';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initCongestionChart();
+      clearLogs();
+    });
+  </script>
+</body>
+</html>
